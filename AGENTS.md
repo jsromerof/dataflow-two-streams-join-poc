@@ -10,10 +10,10 @@ Requirements:
     - In postgres I have the three chassis and english_statement_stage with the same fields of the kafka message.
     - Aditionally i have a table in postgres called chassis_proccessed which have the same structure of chassis table.
     - I need a pardo function that execute this logic :
-    - If a get an event from english_statement i want to make a lookup in chassis table with the field "chassis_id".
-    - If i get a result i will add to the english_statement message the filed "chassis_number" that we get in the returned record from the database.
-    - If im not get a result i make a lookup over the table chassis_proccessed and see if the chassis already was processed by the pardo function . If so, let the english_statement message pass by to persist the message in postgres.
-    - If no one of the two conditions above is true then put the english_statement into the postgres table: english_statement_stage
-    - If we get an event from chassis we want to put the event in the table chassis_proccessed and after that i will make a lookup per chassis_id in the table english_statement_stage .
-    - If a get results from english_statement_stage i want to create the english_statement messages , and return in the DoFn the chassis message and its respective english_statement messages, created previously.
-    - If there is not result we put the chassis in the postgres table: chassis.
+        - If a get an event from english_statement i want to make a lookup in chassis table with the field "chassis_id".
+        - If i get a result i will add to the english_statement message the field "chassis_number" that we get in the returned record from the database and persist it in english_statement table.
+        - If im not get a result i make a lookup over the table chassis_proccessed and see if the chassis already was processed by the pardo function . If so, persist english_statement in postgres.
+        - If no one of the two conditions above is true then put the english_statement into the postgres table: english_statement_stage
+        - If we get an event from chassis we want to put the event in the table chassis_proccessed and after that i will make a lookup per chassis_id in the table english_statement_stage .
+        - If a get results from english_statement_stage i want to create to persist those english statements into postgres , and finally  make this in one transaction : insert chassis in chassis table and delete this chassis in chassis_proccessed.
+        - If there is not result we put the chassis in the postgres table: chassis.

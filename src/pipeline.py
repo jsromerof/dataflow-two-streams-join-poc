@@ -23,15 +23,12 @@ from apache_beam.io.kafka import ReadFromKafka
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
 
 from config import DB_CONFIG, KAFKA_CONFIG, KAFKA_TOPICS
-from dofns import (
-    CHASSIS_TAG,
-    ENGLISH_STATEMENT_TAG,
-    JoinDoFn,
-    WriteToPostgresDoFn,
-)
+from dofns import JoinDoFn
 
 logger = logging.getLogger(__name__)
+import os 
 
+os.environ["BEAM_USE_MULTIPROCESSING"] = "0"
 
 def _tag_message(kv, source: str):
     """Decode a Kafka (key, value) bytes pair and tag it with its source name."""
@@ -42,8 +39,9 @@ def _tag_message(kv, source: str):
 def build_pipeline(p: beam.Pipeline) -> None:
     kafka_consumer_config = {
         "bootstrap.servers": KAFKA_CONFIG["bootstrap_servers"],
-        "group.id": KAFKA_CONFIG["consumer_group"],
-        "auto.offset.reset": "latest",
+        "group.id": "beam-" + str(__import__("time").time()),
+        "auto.offset.reset": "earliest",
+        "enable.auto.commit": "true",
     }
 
     chassis_stream = (
@@ -52,7 +50,7 @@ def build_pipeline(p: beam.Pipeline) -> None:
         >> ReadFromKafka(
             consumer_config=kafka_consumer_config,
             topics=[KAFKA_TOPICS["chassis"]],
-            with_metadata=False,
+            max_num_records=1
         )
         | "TagChassis" >> beam.Map(_tag_message, source="chassis")
     )
@@ -63,7 +61,7 @@ def build_pipeline(p: beam.Pipeline) -> None:
         >> ReadFromKafka(
             consumer_config=kafka_consumer_config,
             topics=[KAFKA_TOPICS["english_statement"]],
-            with_metadata=False,
+            max_num_records=1
         )
         | "TagEnglishStatement"
         >> beam.Map(_tag_message, source="english_statement")
@@ -74,35 +72,7 @@ def build_pipeline(p: beam.Pipeline) -> None:
         | "MergeStreams" >> beam.Flatten()
     )
 
-    results = merged | "JoinLogic" >> beam.ParDo(
-        JoinDoFn(db_config=DB_CONFIG)
-    ).with_outputs(CHASSIS_TAG, ENGLISH_STATEMENT_TAG)
-
-    # chassis  →  chassis table
-    (
-        results[CHASSIS_TAG]
-        | "WriteChassis"
-        >> beam.ParDo(
-            WriteToPostgresDoFn(
-                db_config=DB_CONFIG,
-                table="chassis",
-                columns=["chassis_id", "chassis_number"],
-            )
-        )
-    )
-
-    # english_statement  →  english_statement table (enriched with chassis_number)
-    (
-        results[ENGLISH_STATEMENT_TAG]
-        | "WriteEnglishStatement"
-        >> beam.ParDo(
-            WriteToPostgresDoFn(
-                db_config=DB_CONFIG,
-                table="english_statement",
-                columns=["english_statement_id", "chassis_id", "description", "chassis_number"],
-            )
-        )
-    )
+    merged | "JoinLogic" >> beam.ParDo(JoinDoFn(db_config=DB_CONFIG))
 
 
 def run():

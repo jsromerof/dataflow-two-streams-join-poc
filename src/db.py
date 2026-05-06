@@ -136,3 +136,26 @@ class PostgresClient:
                 ),
             )
         self._conn.commit()
+
+    def insert_chassis_and_delete_processed(self, chassis: Dict):
+        """Atomically promote a chassis from chassis_processed to chassis."""
+        self.ensure_connected()
+        chassis_id = chassis["chassis_id"]
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO chassis (chassis_id, chassis_number)
+                    VALUES (%s, %s)
+                    ON CONFLICT (chassis_id) DO NOTHING
+                    """,
+                    (chassis_id, chassis["chassis_number"]),
+                )
+                cur.execute(
+                    "DELETE FROM chassis_processed WHERE chassis_id = %s",
+                    (chassis_id,),
+                )
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
