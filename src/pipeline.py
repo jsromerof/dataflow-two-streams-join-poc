@@ -40,7 +40,7 @@ def build_pipeline(p: beam.Pipeline) -> None:
     kafka_consumer_config = {
         "bootstrap.servers": KAFKA_CONFIG["bootstrap_servers"],
         "group.id": "beam-" + str(__import__("time").time()),
-        "auto.offset.reset": "earliest",
+        "auto.offset.reset": "latest",
         "enable.auto.commit": "true",
     }
 
@@ -50,7 +50,7 @@ def build_pipeline(p: beam.Pipeline) -> None:
         >> ReadFromKafka(
             consumer_config=kafka_consumer_config,
             topics=[KAFKA_TOPICS["chassis"]],
-            max_num_records=1
+            max_num_records=0
         )
         | "TagChassis" >> beam.Map(_tag_message, source="chassis")
     )

@@ -158,3 +158,19 @@ SELECT * FROM chassis_processed;
 | `psycopg2.OperationalError` | Check env vars match your Postgres setup |
 | `ModuleNotFoundError` | Run `python pipeline.py` from the `src/` directory so local imports resolve |
 | Kafka messages not consumed | Change `auto.offset.reset` from `latest` to `earliest` in `config.py` if topics have pre-existing messages |
+
+## Create resources
+
+kafka-topics --create \
+  --topic chassis \
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+
+kafka-topics --create \
+  --topic english_statement \
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+
+kafka-topics --list --bootstrap-server localhost:9092
