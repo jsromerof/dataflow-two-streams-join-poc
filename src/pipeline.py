@@ -40,7 +40,7 @@ def build_pipeline(p: beam.Pipeline) -> None:
     kafka_consumer_config = {
         "bootstrap.servers": KAFKA_CONFIG["bootstrap_servers"],
         "group.id": "beam-" + str(__import__("time").time()),
-        "auto.offset.reset": "latest",
+        "auto.offset.reset": "earliest",
         "enable.auto.commit": "true",
     }
 
