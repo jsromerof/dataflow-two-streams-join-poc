@@ -24,6 +24,7 @@ from apache_beam.options.pipeline_options import PipelineOptions, StandardOption
 
 from config import DB_CONFIG, KAFKA_CONFIG, KAFKA_TOPICS
 from dofns import JoinDoFn
+from apache_beam.transforms import managed
 
 logger = logging.getLogger(__name__)
 import os 
@@ -43,14 +44,26 @@ def build_pipeline(p: beam.Pipeline) -> None:
         "auto.offset.reset": "earliest",
         "enable.auto.commit": "true",
     }
+    
+    managed_config = {
+        "bootstrap_servers": KAFKA_CONFIG["bootstrap_servers"],
+        "topic": KAFKA_TOPICS["chassis"],
+        "max_num_records" : 1,
+        "format": "STRING",
+        "consumer_config_updates":{
+            "group.id": "beam-" + str(__import__("time").time()),
+            "auto.offset.reset": "earliest",
+            "enable.auto.commit": "true",
+        }
+    }
 
     chassis_stream = (
         p
         | "ReadChassis"
-        >> ReadFromKafka(
-            consumer_config=kafka_consumer_config,
-            topics=[KAFKA_TOPICS["chassis"]],
-            max_num_records=0
+        >> managed.Read(
+            managed.KAFKA, 
+            config=managed_config,
+            expansion_service="localhost:8097"
         )
         | "TagChassis" >> beam.Map(_tag_message, source="chassis")
     )

@@ -68,6 +68,16 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  
+  expansion-service:
+    image: apache/beam_java_expansion_service:2.71.0
+    container_name: apache-beam-expansion
+    ports:
+      - "8097:8097"
+    environment:
+      - BEAM_EXPANSION_PORT=8097
+    command: ["--port", "8097", "--id", "apache-beam-expansion"]
+    restart: unless-stopped
 
 volumes:
   postgres_data:
